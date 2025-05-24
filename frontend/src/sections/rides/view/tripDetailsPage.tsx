@@ -114,7 +114,11 @@ export function TripDetailsPage() {
     }
   };
 
+
+
+
   const currentUserId = getUserId();
+const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   // Fetch the ride details from the backend
   useEffect(() => {
@@ -596,27 +600,29 @@ export function TripDetailsPage() {
             )}
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Trip Route
-            </Typography>
-            {/* Embed Google Map */}
-            <Box sx={{ mt: 2, height: '300px' }}>
-              <iframe
-                title="Trip Route"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                style={{ border: 0 }}
-                src={`https://www.google.com/maps/embed/v1/directions?key=AIzaSyB1FL4hF8actfjd_5PgMAyxv9Zz2lN_Imw&origin=${encodeURIComponent(
-                  ride.startLocation
-                )}&destination=${encodeURIComponent(ride.destination)}&mode=driving`}
-                allowFullScreen
-              ></iframe>
-            </Box>
-          </Paper>
-        </Grid>
+        
+<Grid item xs={12} md={6}>
+  <Paper elevation={3} sx={{ p: 4 }}>
+    <Typography variant="h6" gutterBottom>
+      Trip Route
+    </Typography>
+    {/* Embed Google Map */}
+    <Box sx={{ mt: 2, height: '300px' }}>
+      <iframe
+        title="Trip Route"
+        width="100%"
+        height="100%"
+        frameBorder="0"
+        style={{ border: 0 }}
+        src={`https://www.google.com/maps/embed/v1/directions?key=${mapsKey
+          }&origin=${encodeURIComponent(ride.startLocation)
+          }&destination=${encodeURIComponent(ride.destination)
+          }&mode=driving`}
+        allowFullScreen
+      />
+    </Box>
+  </Paper>
+</Grid>
       </Grid>
 
       {/* Co-Passengers Section for Everyone */}

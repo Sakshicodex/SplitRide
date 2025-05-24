@@ -15,36 +15,29 @@ import {
   FormControlLabel,
   Switch,
 } from '@mui/material';
-import { GoogleMap, useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import api, { getDistanceMatrix } from 'src/utils/api'; // Import the Axios instance and getDistanceMatrix
+import api, { getDistanceMatrix } from 'src/utils/api';
 
 // Google Libraries
 const libraries = ['places'];
-const mapContainerStyle = {
-  width: '0px',
-  height: '0px',
-};
+const mapContainerStyle = { width: '0px', height: '0px' };
 
 // Bennett University Details
 const BENNETT_UNIVERSITY_ADDRESS =
   'Bennett University, Greater Noida, Uttar Pradesh, India';
-// You can replace this with the actual Place ID if available for more precise matching
-const BENNETT_UNIVERSITY_PLACE_ID = 'ChIJw7I6xwH6njkRejR7_eGd1o4'; // Example Place ID
 
 export function PostRidePage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    // driver will be fetched from profile
-   
     startLocation: '',
     destination: '',
     departureTime: null as Date | null,
-    arrivalTime: null as Date | null, // Will be set automatically
+    arrivalTime: null as Date | null,
     price: '',
     availableSeats: '',
-    requiresApproval: false, // New field for booking approval
+    requiresApproval: false,
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -52,318 +45,150 @@ export function PostRidePage() {
   const [submitError, setSubmitError] = useState('');
   const [driverName, setDriverName] = useState('');
 
-
-  const [rideDirection, setRideDirection] = useState<'from' | 'to'>('from'); // 'from' or 'to'
-
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: 'AIzaSyB1FL4hF8actfjd_5PgMAyxv9Zz2lN_Imw', // Use environment variables
-    libraries,
-  });
+  const [rideDirection, setRideDirection] = useState<'from' | 'to'>('from');
 
   const autocompleteStart = useRef<google.maps.places.Autocomplete | null>(null);
   const autocompleteDestination = useRef<google.maps.places.Autocomplete | null>(null);
 
-  // Function to fetch user profile from the backend
-  const fetchUserProfile = async () => {
-    try {
-      const response = await api.get('/profile'); // GET /api/profile
-      return response.data; // Assuming the backend sends the user data directly
-    } catch (error) {
-      console.error('Error fetching user profile:', error.response || error);
-      throw error; // Propagate the error to handle it in the component
-    }
-  };
-
-  // Fetch user profile on component mount
+  // Fetch user profile
   useEffect(() => {
-    const getUserProfile = async () => {
+    (async () => {
       try {
-        const profile = await fetchUserProfile();
-        setDriverName(profile.name); // Adjust based on your backend's user object
-        
-        // If rideDirection is 'from', set startLocation to Bennett University
+        const profile = (await api.get('/profile')).data;
+        setDriverName(profile.name);
+        // initialize location based on toggle
         if (rideDirection === 'from') {
-          setFormData((prev) => ({
-            ...prev,
-            startLocation: BENNETT_UNIVERSITY_ADDRESS,
-            destination: '',
-            arrivalTime: null,
-          }));
-        } else if (rideDirection === 'to') {
-          setFormData((prev) => ({
-            ...prev,
-            destination: BENNETT_UNIVERSITY_ADDRESS,
-            startLocation: '',
-            arrivalTime: null,
-          }));
+          setFormData(f => ({ ...f, startLocation: BENNETT_UNIVERSITY_ADDRESS, destination: '', arrivalTime: null }));
+        } else {
+          setFormData(f => ({ ...f, destination: BENNETT_UNIVERSITY_ADDRESS, startLocation: '', arrivalTime: null }));
         }
-      } catch (error) {
+      } catch {
         setSubmitError('Failed to fetch user profile. Please try again.');
       }
-    };
-    getUserProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    })();
   }, [rideDirection]);
 
-  // Handle toggle change
-  const handleToggleChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newDirection: 'from' | 'to' | null
-  ) => {
-    if (newDirection !== null) {
-      setRideDirection(newDirection);
-      // Reset form fields related to the toggle
-      if (newDirection === 'from') {
-        setFormData((prev) => ({
-          ...prev,
-          startLocation: BENNETT_UNIVERSITY_ADDRESS,
-          destination: '',
-          arrivalTime: null,
-        }));
-        setErrors((prev) => ({
-          ...prev,
-          startLocation: '',
-          destination: '',
-          location: '',
-          departureTime: '',
-        }));
-      } else if (newDirection === 'to') {
-        setFormData((prev) => ({
-          ...prev,
-          destination: BENNETT_UNIVERSITY_ADDRESS,
-          startLocation: '',
-          arrivalTime: null,
-        }));
-        setErrors((prev) => ({
-          ...prev,
-          startLocation: '',
-          destination: '',
-          location: '',
-          departureTime: '',
-        }));
-      }
-    }
+  const handleToggleChange = (_: any, newDir: 'from' | 'to' | null) => {
+    if (!newDir) return;
+    setRideDirection(newDir);
+    setErrors({});
+    setFormData(f => ({
+      ...f,
+      startLocation: newDir === 'from' ? BENNETT_UNIVERSITY_ADDRESS : '',
+      destination: newDir === 'to' ? BENNETT_UNIVERSITY_ADDRESS : '',
+      arrivalTime: null,
+    }));
   };
 
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    if (name === 'requiresApproval') {
-      setFormData((prev) => ({ ...prev, requiresApproval: checked }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+    const { name, value, checked } = e.target;
+    setFormData(f => ({
+      ...f,
+      [name]: name === 'requiresApproval' ? checked : value,
+    }));
   };
 
-  // Handle date-time changes
-  const handleDateChange = async (name: string, value: Date | null) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === 'departureTime') {
-      if (
-        formData.startLocation &&
-        formData.destination &&
-        value // Ensure departureTime is selected
-      ) {
-        try {
-          // Fetch distance matrix from backend
-          const distanceData = await getDistanceMatrix(formData.startLocation, formData.destination);
-          if (
-            distanceData &&
-            distanceData.rows &&
-            distanceData.rows[0].elements &&
-            distanceData.rows[0].elements[0].status === 'OK'
-          ) {
-            const travelDurationSeconds = distanceData.rows[0].elements[0].duration.value; // Duration in seconds
-            const arrivalDate = new Date(value);
-            arrivalDate.setSeconds(arrivalDate.getSeconds() + travelDurationSeconds);
-            setFormData((prev) => ({ ...prev, arrivalTime: arrivalDate }));
-          } else {
-            setErrors((prev) => ({
-              ...prev,
-              arrivalTime: 'Unable to calculate arrival time.',
-            }));
-            setFormData((prev) => ({ ...prev, arrivalTime: null }));
-          }
-        } catch (error) {
-          console.error('Error fetching distance matrix:', error);
-          setErrors((prev) => ({
-            ...prev,
-            arrivalTime: 'Error calculating arrival time.',
-          }));
-          setFormData((prev) => ({ ...prev, arrivalTime: null }));
+  const handleDateChange = async (field: string, date: Date | null) => {
+    setFormData(f => ({ ...f, [field]: date }));
+    if (field === 'departureTime' && formData.startLocation && formData.destination && date) {
+      try {
+        const dist = await getDistanceMatrix(formData.startLocation, formData.destination);
+        const el = dist.rows[0].elements[0];
+        if (el.status === 'OK') {
+          const arrival = new Date(date);
+          arrival.setSeconds(arrival.getSeconds() + el.duration.value);
+          setFormData(f => ({ ...f, arrivalTime: arrival }));
+        } else {
+          setErrors(e => ({ ...e, arrivalTime: 'Unable to calculate arrival time.' }));
+          setFormData(f => ({ ...f, arrivalTime: null }));
         }
-      } else {
-        setFormData((prev) => ({ ...prev, arrivalTime: null }));
+      } catch {
+        setErrors(e => ({ ...e, arrivalTime: 'Error calculating arrival time.' }));
+        setFormData(f => ({ ...f, arrivalTime: null }));
       }
     }
   };
 
-  // Handle place selection from Autocomplete
-  const onPlaceChanged = (
-    ref: React.RefObject<google.maps.places.Autocomplete>,
-    field: string
-  ) => {
-    if (ref.current !== null) {
-      const place = ref.current.getPlace();
-      if (place.formatted_address) {
-        setFormData((prev) => ({ ...prev, [field]: place.formatted_address, arrivalTime: null }));
-      }
+  const onPlaceChanged = (ref: React.RefObject<google.maps.places.Autocomplete>, field: string) => {
+    const place = ref.current?.getPlace();
+    if (place?.formatted_address) {
+      setFormData(f => ({ ...f, [field]: place.formatted_address, arrivalTime: null }));
     }
   };
 
-  // Validate form inputs
-  const validate = (): boolean => {
-    let temp: { [key: string]: string } = {};
+  const validate = () => {
     const now = new Date();
-    const sevenDaysFromNow = new Date();
-    sevenDaysFromNow.setDate(now.getDate() + 7);
+    const weekAhead = new Date(now);
+    weekAhead.setDate(now.getDate() + 7);
+    const temp: Record<string,string> = {};
 
-    // Validate start and destination based on toggle
     if (rideDirection === 'from') {
-      // Start location is fixed, validate destination
-      temp.startLocation =
-        formData.startLocation === BENNETT_UNIVERSITY_ADDRESS
-          ? ''
-          : 'Start location must be Bennett University.';
       temp.destination = formData.destination ? '' : 'Destination is required.';
-    } else if (rideDirection === 'to') {
-      // Destination is fixed, validate start location
-      temp.destination =
-        formData.destination === BENNETT_UNIVERSITY_ADDRESS
-          ? ''
-          : 'Destination must be Bennett University.';
+    } else {
       temp.startLocation = formData.startLocation ? '' : 'Start location is required.';
     }
 
-    // Validate departureTime
-    if (formData.departureTime) {
-      if (formData.departureTime <= now) {
-        temp.departureTime = 'Departure time must be in the future.';
-      } else if (formData.departureTime > sevenDaysFromNow) {
-        temp.departureTime = 'Departure time must be within the next 7 days.';
-      } else {
-        temp.departureTime = '';
-      }
-    } else {
-      temp.departureTime = 'Departure time is required.';
-    }
+    if (!formData.departureTime) temp.departureTime = 'Departure time is required.';
+    else if (formData.departureTime <= now) temp.departureTime = 'Must be in the future.';
+    else if (formData.departureTime > weekAhead) temp.departureTime = 'Within next 7 days.';
 
-    // Validate arrivalTime
     temp.arrivalTime = formData.arrivalTime ? '' : 'Arrival time is required.';
+    temp.price = +formData.price > 0 ? '' : 'Valid price is required.';
+    temp.availableSeats = +formData.availableSeats > 0 ? '' : 'Valid seats required.';
 
-    // Validate price
-    temp.price =
-      formData.price && !isNaN(Number(formData.price)) && parseFloat(formData.price) > 0
-        ? ''
-        : 'Valid price is required.';
-
-    // Validate availableSeats
-    temp.availableSeats =
-      formData.availableSeats &&
-      !isNaN(Number(formData.availableSeats)) &&
-      parseInt(formData.availableSeats, 10) > 0
-        ? ''
-        : 'Valid number of seats is required.';
-
-    setErrors({
-      ...temp,
-    });
-
-    return Object.values(temp).every((x) => x === '');
+    setErrors(temp);
+    return Object.values(temp).every(v => v === '');
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      setSubmitting(true);
-      setSubmitError('');
-      try {
-        const payload = {
-          driverName: driverName,
-         
-          ...formData,
-          departureTime: formData.departureTime?.toISOString(),
-          arrivalTime: formData.arrivalTime?.toISOString(),
-          price: parseFloat(formData.price),
-          availableSeats: parseInt(formData.availableSeats, 10),
-        };
-
-        console.log('Payload:', payload); // Debugging: Log the payload before sending
-
-        const response = await api.post('/rides', payload); // Use the Axios instance
-        alert('Ride posted successfully!');
-        navigate('/rides'); // Navigate to the rides page
-      } catch (error: any) {
-        console.error('Error posting ride:', error.response || error);
-        setSubmitError(error.response?.data?.message || 'Failed to post ride.');
-      } finally {
-        setSubmitting(false);
-      }
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        driverName,
+        ...formData,
+        departureTime: formData.departureTime?.toISOString(),
+        arrivalTime: formData.arrivalTime?.toISOString(),
+        price: +formData.price,
+        availableSeats: +formData.availableSeats,
+      };
+      await api.post('/rides', payload);
+      alert('Ride posted successfully!');
+      navigate('/rides');
+    } catch (err: any) {
+      setSubmitError(err.response?.data?.message || 'Failed to post ride.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (loadError) return <Typography color="error">Error loading maps</Typography>;
-  if (!isLoaded)
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          height: '100vh',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-
-  // Calculate the maximum departure date (7 days from now)
-  const maxDepartureDate = new Date();
-  maxDepartureDate.setDate(maxDepartureDate.getDate() + 7);
-
-  // Calculate minTime and maxTime for DatePicker based on whether the selected date is today
-  const calculateMinTime = () => {
-    if (
-      formData.departureTime &&
-      formData.departureTime.toDateString() === new Date().toDateString()
-    ) {
-      return new Date();
-    }
-    return new Date().setHours(0, 0, 0, 0);
-  };
-
+  // Render
   return (
     <Box sx={{ p: { xs: 2, md: 5 }, backgroundColor: '#f0f2f5', minHeight: '100vh' }}>
-      <Paper elevation={3} sx={{ p: 4, maxWidth: '600px', mx: 'auto' }}>
-        <Typography variant="h5" sx={{ mb: 3, textAlign: 'center', fontWeight: 'bold' }}>
+      <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>
+        <Typography variant="h5" align="center" gutterBottom>
           Post a Ride
         </Typography>
-        
-        <Typography variant="subtitle1" sx={{ textAlign: 'center', mb: 3 }}>
+        <Typography variant="subtitle1" align="center" gutterBottom>
           Driver: {driverName}
         </Typography>
 
-        {/* Toggle Button Group */}
-        <Box sx={{ mb: 3, textAlign: 'center' }}>
+        <Box textAlign="center" mb={3}>
           <ToggleButtonGroup
             value={rideDirection}
             exclusive
             onChange={handleToggleChange}
-            aria-label="Ride Direction"
           >
-            <ToggleButton value="from" aria-label="From Bennett University">
-              From Bennett University
-            </ToggleButton>
-            <ToggleButton value="to" aria-label="To Bennett University">
-              To Bennett University
-            </ToggleButton>
+            <ToggleButton value="from">From Bennett University</ToggleButton>
+            <ToggleButton value="to">To Bennett University</ToggleButton>
           </ToggleButtonGroup>
         </Box>
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
-            {/* Start Location with Autocomplete */}
+
+            {/* Start Location */}
             <Grid item xs={12}>
               {rideDirection === 'from' ? (
                 <TextField
@@ -371,23 +196,13 @@ export function PostRidePage() {
                   name="startLocation"
                   value={formData.startLocation}
                   fullWidth
-                  disabled
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  InputProps={{ readOnly: true }}
                 />
               ) : (
                 <Autocomplete
-                  onLoad={(autocomplete) => {
-                    autocompleteStart.current = autocomplete;
-                  }}
-                  onPlaceChanged={() =>
-                    onPlaceChanged(autocompleteStart, 'startLocation')
-                  }
-                  options={{
-                    componentRestrictions: { country: 'in' },
-                    fields: ['formatted_address'],
-                  }}
+                  onLoad={ref => (autocompleteStart.current = ref)}
+                  onPlaceChanged={() => onPlaceChanged(autocompleteStart, 'startLocation')}
+                  options={{ componentRestrictions: { country: 'in' }, fields: ['formatted_address'] }}
                 >
                   <TextField
                     label="Start Location"
@@ -403,7 +218,7 @@ export function PostRidePage() {
               )}
             </Grid>
 
-            {/* Destination with Autocomplete */}
+            {/* Destination */}
             <Grid item xs={12}>
               {rideDirection === 'to' ? (
                 <TextField
@@ -411,23 +226,13 @@ export function PostRidePage() {
                   name="destination"
                   value={formData.destination}
                   fullWidth
-                  disabled
-                  InputProps={{
-                    readOnly: true,
-                  }}
+                  InputProps={{ readOnly: true }}
                 />
               ) : (
                 <Autocomplete
-                  onLoad={(autocomplete) => {
-                    autocompleteDestination.current = autocomplete;
-                  }}
-                  onPlaceChanged={() =>
-                    onPlaceChanged(autocompleteDestination, 'destination')
-                  }
-                  options={{
-                    componentRestrictions: { country: 'in' },
-                    fields: ['formatted_address'],
-                  }}
+                  onLoad={ref => (autocompleteDestination.current = ref)}
+                  onPlaceChanged={() => onPlaceChanged(autocompleteDestination, 'destination')}
+                  options={{ componentRestrictions: { country: 'in' }, fields: ['formatted_address'] }}
                 >
                   <TextField
                     label="Destination"
@@ -443,67 +248,38 @@ export function PostRidePage() {
               )}
             </Grid>
 
-            {/* Validation Message for Locations (if any) */}
-            {errors.location && (
-              <Grid item xs={12}>
-                <Typography variant="body2" color="error">
-                  {errors.location}
-                </Typography>
-              </Grid>
-            )}
-
-            {/* Departure Time */}
+            {/* Departure & Arrival */}
             <Grid item xs={12} sm={6}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Departure Time
-              </Typography>
+              <Typography>Departure Time</Typography>
               <DatePicker
                 selected={formData.departureTime}
-                onChange={(date) => handleDateChange('departureTime', date)}
+                onChange={date => handleDateChange('departureTime', date)}
                 showTimeSelect
-                timeFormat="HH:mm"
                 timeIntervals={15}
                 dateFormat="MMMM d, yyyy h:mm aa"
                 className="date-picker"
                 placeholderText="Select departure time"
-                wrapperClassName="w-full"
                 minDate={new Date()}
-                maxDate={maxDepartureDate}
-                minTime={calculateMinTime()}
-                maxTime={new Date(new Date().setHours(23, 45))}
+                maxDate={(() => { const d = new Date(); d.setDate(d.getDate()+7); return d; })()}
               />
-              {errors.departureTime && (
-                <Typography variant="body2" color="error">
-                  {errors.departureTime}
-                </Typography>
-              )}
+              {!!errors.departureTime && <Typography color="error">{errors.departureTime}</Typography>}
             </Grid>
 
-            {/* Arrival Time - Read Only */}
             <Grid item xs={12} sm={6}>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                Arrival Time
-              </Typography>
+              <Typography>Arrival Time</Typography>
               <DatePicker
                 selected={formData.arrivalTime}
-                onChange={() => {}} // Do nothing, read-only
+                readOnly
                 showTimeSelect
-                timeFormat="HH:mm"
                 timeIntervals={15}
                 dateFormat="MMMM d, yyyy h:mm aa"
                 className="date-picker"
                 placeholderText="Arrival time will be set automatically"
-                wrapperClassName="w-full"
-                readOnly
               />
-              {errors.arrivalTime && (
-                <Typography variant="body2" color="error">
-                  {errors.arrivalTime}
-                </Typography>
-              )}
+              {!!errors.arrivalTime && <Typography color="error">{errors.arrivalTime}</Typography>}
             </Grid>
 
-            {/* Price */}
+            {/* Price & Seats */}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Price (INR)"
@@ -514,12 +290,10 @@ export function PostRidePage() {
                 fullWidth
                 error={!!errors.price}
                 helperText={errors.price}
+                inputProps={{ min: 0 }}
                 required
-                InputProps={{ inputProps: { min: 0 } }}
               />
             </Grid>
-
-            {/* Available Seats */}
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Available Seats"
@@ -530,12 +304,12 @@ export function PostRidePage() {
                 fullWidth
                 error={!!errors.availableSeats}
                 helperText={errors.availableSeats}
+                inputProps={{ min: 1 }}
                 required
-                InputProps={{ inputProps: { min: 1 } }}
               />
             </Grid>
 
-            {/* New Toggle for Booking Approval */}
+            {/* Approval Toggle */}
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -543,20 +317,15 @@ export function PostRidePage() {
                     checked={formData.requiresApproval}
                     onChange={handleChange}
                     name="requiresApproval"
-                    color="primary"
                   />
                 }
                 label="Require approval for bookings"
               />
             </Grid>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <Grid item xs={12}>
-              {submitError && (
-                <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-                  {submitError}
-                </Typography>
-              )}
+              {!!submitError && <Typography color="error">{submitError}</Typography>}
               <Button
                 type="submit"
                 variant="contained"
@@ -564,7 +333,7 @@ export function PostRidePage() {
                 fullWidth
                 disabled={submitting}
               >
-                {submitting ? 'Posting...' : 'Post Ride'}
+                {submitting ? 'Posting…' : 'Post Ride'}
               </Button>
             </Grid>
           </Grid>
@@ -573,3 +342,4 @@ export function PostRidePage() {
     </Box>
   );
 }
+
