@@ -12,7 +12,6 @@ export default function App() {
   useScrollToTop();
 
   // 👉 Add this:
-  console.log('🔑 GOOGLE_MAPS_API_KEY =', GOOGLE_MAPS_API_KEY);
 
   return (
     <ThemeProvider>

@@ -6,6 +6,7 @@ import { Icon } from '@iconify/react';
 import sendIcon from '@iconify/icons-eva/paper-plane-fill';
 import chatListIcon from '@iconify/icons-ion/chatbubble-outline';
 import axios from 'axios';
+import api from 'src/utils/api';
 
 // Replace this with your real authentication context or logic
 import { useAuth } from 'src/context/AuthContext'; // or 'src/context/AuthContext'
@@ -30,6 +31,8 @@ interface Conversation {
   participants: User[];
   lastMessage?: Message;
 }
+
+const SOCKET_URL = import.meta.env.VITE_API_URL;
 
 const ChatPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -62,7 +65,7 @@ const ChatPage: React.FC = () => {
     if (!token || !user) return;
     if (socketRef.current) return; // Prevent double-connecting
 
-    const socket = io('http://localhost:5000', {
+    const socket = io(SOCKET_URL, {
       auth: { token: `Bearer ${token}` },
       transports: ['websocket'],
     });
