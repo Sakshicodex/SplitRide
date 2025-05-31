@@ -263,11 +263,12 @@ const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
         }
       );
       // Update bookings state
-      setBookings((prev) =>
-        prev?.map((booking) =>
-          booking._id === bookingId ? { ...booking, status: 'approved' } : booking
-        )
-      );
+      setBookings((prev) => {
+  if (!prev) return prev;
+  return prev.map((booking) =>
+    booking._id === bookingId ? { ...booking, status: 'approved' } : booking
+  );
+});
       alert('Booking approved successfully!');
     } catch (error: any) {
       console.error('Error approving booking:', error.response || error);
@@ -288,11 +289,12 @@ const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
         }
       );
       // Update bookings state
-      setBookings((prev) =>
-        prev?.map((booking) =>
-          booking._id === bookingId ? { ...booking, status: 'rejected' } : booking
-        )
-      );
+      setBookings((prev) => {
+  if (!prev) return prev;
+  return prev.map((booking) =>
+    booking._id === bookingId ? { ...booking, status: 'rejected' } : booking
+  );
+});
       alert('Booking rejected successfully!');
     } catch (error: any) {
       console.error('Error rejecting booking:', error.response || error);
@@ -423,8 +425,8 @@ const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={4}>
           <Avatar
-            alt={ride.driverName}
-            src={ride.profilePicture}
+            alt={ride.driverName || ''}
+            src={ride.profilePicture || ''}
             sx={{
               width: { xs: 120, sm: 150 },
               height: { xs: 120, sm: 150 },

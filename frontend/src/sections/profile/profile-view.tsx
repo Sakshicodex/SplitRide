@@ -119,7 +119,7 @@ export function ProfilePage() {
       });
 
       // update global auth
-      updateUser({ photoURL: pic, name: u.name, email: u.email });
+      updateUser({ profilePicture: pic, name: u.name, email: u.email });
 
       setSubmitSuccess('Profile updated successfully');
       setEditing(false);

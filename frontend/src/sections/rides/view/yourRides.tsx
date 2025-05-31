@@ -24,173 +24,116 @@ import { Backdrop, IconButton } from '@mui/material';
 import { Icon } from '@iconify/react';
 import chatBubbleOutline from '@iconify/icons-mdi/chat-bubble-outline'; // Chat icon
 
-export function YourRides() {
-  // State variables for rides
-  const [postedRides, setPostedRides] = useState([]);
-  const [bookedRides, setBookedRides] = useState([]);
-  const [pendingBookingsAsDriver, setPendingBookingsAsDriver] = useState([]);
-  const [pendingBookingsAsPassenger, setPendingBookingsAsPassenger] = useState([]);
+interface Ride {
+  _id: string;
+  driverName: string;
+  profilePicture: string;
+  startLocation: string;
+  destination: string;
+  departureTime: string;
+  arrivalTime: string;
+  price: number;
+  availableSeats: number;
+  seatsBooked?: number;
+  status?: string;
+  bookingId?: string;
+  ride?: string;
+  user?: {
+    name: string;
+    email: string;
+    profilePicture: string;
+    _id: string;
+  };
+  seats?: number;
+}
 
-  // Loading and error states
+export function YourRides() {
+  const [postedRides, setPostedRides] = useState<Ride[]>([]);
+const [bookedRides, setBookedRides] = useState<Ride[]>([]);
+const [pendingBookingsAsDriver, setPendingBookingsAsDriver] = useState<Ride[]>([]);
+const [pendingBookingsAsPassenger, setPendingBookingsAsPassenger] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
-  const { user, token } = useAuth(); // Destructure user and token from AuthContext
+  const { user, token } = useAuth();
 
-  // Modal state for approving/rejecting bookings
   const [modalOpen, setModalOpen] = useState(false);
-  const [currentBooking, setCurrentBooking] = useState(null);
-  const [actionType, setActionType] = useState(''); // 'approve' or 'reject'
+ const [currentBooking, setCurrentBooking] = useState<Ride | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | ''>('');
 
-  // **1. Filter State**
-  const [filter, setFilter] = useState('posted'); // Default filter
+  const [filter, setFilter] = useState<'posted' | 'booked' | 'pending'>('posted');
 
-  /**
-   * **2. Handle Filter Change**
-   */
-  const handleFilterChange = (event, newFilter) => {
-    if (newFilter !== null) {
-      setFilter(newFilter);
-    }
+  const handleFilterChange = (_event: React.MouseEvent<HTMLElement>, newFilter: string | null) => {
+    if (newFilter !== null) setFilter(newFilter as typeof filter);
   };
 
-  /**
-   * Fetch posted rides by the user.
-   */
   const fetchPostedRides = async () => {
     try {
       const response = await axios.get('/api/rides/your-posts', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const rides = Array.isArray(response.data.rides) ? response.data.rides : [];
-      setPostedRides(rides);
+      setPostedRides(Array.isArray(response.data.rides) ? response.data.rides : []);
     } catch (error) {
-      console.error('Error fetching posted rides:', error.response || error);
+      console.error('Error fetching posted rides:', error);
       setError('Failed to fetch your posted rides.');
       setPostedRides([]);
     }
   };
 
-  /**
-   * Fetch booked rides by the user.
-   */
   const fetchBookedRides = async () => {
     try {
       const response = await axios.get('/api/rides/your-bookings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const booked = Array.isArray(response.data.bookedRides)
-        ? response.data.bookedRides
-        : [];
-      setBookedRides(booked);
+      setBookedRides(Array.isArray(response.data.bookedRides) ? response.data.bookedRides : []);
     } catch (error) {
-      console.error('Error fetching booked rides:', error.response || error);
+      console.error('Error fetching booked rides:', error);
       setError('Failed to fetch your booked rides.');
       setBookedRides([]);
     }
   };
 
-  /**
-   * Fetch pending bookings where the user is the driver.
-   */
   const fetchPendingBookingsAsDriver = async () => {
     try {
-      // Fetch user's posted rides
       const response = await axios.get('/api/rides/your-posts', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const postedRides = Array.isArray(response.data.rides)
-        ? response.data.rides
-        : [];
-
-      if (postedRides.length === 0) {
-        // If no rides are posted, set pending bookings as empty
-        setPendingBookingsAsDriver([]);
-        return;
-      }
-
-      // Fetch bookings for each posted ride
-      const bookingPromises = postedRides.map((ride) =>
+      const posted = Array.isArray(response.data.rides) ? response.data.rides : [];
+      const bookingPromises = posted.map((ride: Ride) =>
         axios
-          .get(`/api/rides/${ride._id}/bookings`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
+          .get(`/api/rides/${ride._id}/bookings`, { headers: { Authorization: `Bearer ${token}` } })
           .then((res) => res.data.bookings)
-          .catch((err) => {
-            console.error(
-              `Error fetching bookings for ride ${ride._id}:`,
-              err.response || err
-            );
-            return []; // Return empty array on error to prevent Promise.all from failing
-          })
+          .catch(() => [])
       );
 
-      // Wait for all booking fetches to complete
-      const bookingsArrays = await Promise.all(bookingPromises);
-
-      // Flatten the array of arrays into a single array of bookings
-      const allBookings = bookingsArrays.flat();
-
-      // Filter bookings with status 'pending'
-      const pendingBookings = allBookings.filter(
-        (booking) => booking.status === 'pending'
-      );
-
-      setPendingBookingsAsDriver(pendingBookings);
+      const allBookings = (await Promise.all(bookingPromises)).flat();
+      const pending = allBookings.filter((b: Ride) => b.status === 'pending');
+      setPendingBookingsAsDriver(pending);
     } catch (error) {
-      console.error(
-        'Error fetching pending bookings as driver:',
-        error.response || error
-      );
+      console.error('Error fetching pending bookings as driver:', error);
       setError('Failed to fetch pending bookings as driver.');
       setPendingBookingsAsDriver([]);
     }
   };
 
-  /**
-   * Fetch pending bookings where the user is the passenger.
-   */
   const fetchPendingBookingsAsPassenger = async () => {
     try {
       const response = await axios.get('/api/rides/your-bookings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const bookedRides = Array.isArray(response.data.bookedRides)
-        ? response.data.bookedRides
-        : [];
-
-      // Filter bookings with status 'pending'
-      const pendingBookings = bookedRides.filter(
-        (ride) => ride.status === 'pending'
-      );
-
-      setPendingBookingsAsPassenger(pendingBookings);
+      const booked = Array.isArray(response.data.bookedRides) ? response.data.bookedRides : [];
+      const pending = booked.filter((ride: Ride) => ride.status === 'pending');
+      setPendingBookingsAsPassenger(pending);
     } catch (error) {
-      console.error(
-        'Error fetching pending bookings as passenger:',
-        error.response || error
-      );
+      console.error('Error fetching pending bookings as passenger:', error);
       setError('Failed to fetch pending bookings as passenger.');
       setPendingBookingsAsPassenger([]);
     }
   };
 
-  /**
-   * useEffect hook to fetch all necessary data on component mount.
-   */
   useEffect(() => {
     const fetchData = async () => {
       await fetchPostedRides();
@@ -200,114 +143,62 @@ export function YourRides() {
       setLoading(false);
     };
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /**
-   * Navigate to ride details page.
-   * @param {Object} ride - The ride object.
-   */
-  const handleViewDetails = (ride) => {
-    navigate(`/rides/${ride._id}`); // Adjust the path as needed
-  };
+  const handleViewDetails = (ride: Ride) => navigate(`/rides/${ride._id}`);
 
-  /**
-   * Navigate to chat page with the driver.
-   * @param {Object} booking - The booking object.
-   */
-  const handleChat = async (booking) => {
-    if (!token || !booking.user._id) {
+  const handleChat = async (booking: Ride) => {
+    if (!token || !booking.user?._id) {
       alert('Authentication error. Please try again.');
       return;
     }
 
     try {
-      // Create or get the conversation with the passenger
-      const conversationResponse = await axios.post(
-        `/api/chat/conversations/${booking.user._id}`, // Adjust the endpoint as per your backend
+      const response = await axios.post(
+        `/api/chat/conversations/${booking.user._id}`,
         {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const conversationId = conversationResponse.data.conversation._id;
-
-      // Navigate to the Chat Page with conversationId
-      navigate(`/chat/${conversationId}`);
+      navigate(`/chat/${response.data.conversation._id}`);
     } catch (error) {
-      console.error('Error initiating chat:', error.response || error);
+      console.error('Error initiating chat:', error);
       alert('Failed to initiate chat. Please try again.');
     }
   };
 
-  /**
-   * Open modal for approving or rejecting a booking.
-   * @param {Object} booking - The booking object.
-   * @param {string} type - The action type ('approve' or 'reject').
-   */
-  const handleOpenModal = (booking, type) => {
+  const handleOpenModal = (booking: Ride, type: 'approve' | 'reject') => {
     setCurrentBooking(booking);
-    setActionType(type); // 'approve' or 'reject'
+    setActionType(type);
     setModalOpen(true);
   };
 
-  /**
-   * Close the modal.
-   */
   const handleCloseModal = () => {
     setCurrentBooking(null);
     setActionType('');
     setModalOpen(false);
   };
 
-  /**
-   * Confirm the action (approve/reject) on a booking.
-   */
   const handleConfirmAction = async () => {
     if (!currentBooking || !actionType) return;
-
-    const rideId = currentBooking.ride;
+    const rideId = currentBooking.ride!;
     const bookingId = currentBooking._id;
 
     try {
-      if (actionType === 'approve') {
-        await axios.post(
-          `/api/rides/${rideId}/bookings/${bookingId}/approve`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        // Remove the approved booking from pending bookings as driver
-        setPendingBookingsAsDriver((prev) =>
-          prev.filter((booking) => booking._id !== bookingId)
-        );
-        alert('Booking approved successfully!');
-      } else if (actionType === 'reject') {
-        await axios.post(
-          `/api/rides/${rideId}/bookings/${bookingId}/reject`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        // Remove the rejected booking from pending bookings as driver
-        setPendingBookingsAsDriver((prev) =>
-          prev.filter((booking) => booking._id !== bookingId)
-        );
-        alert('Booking rejected successfully!');
-      }
+      await axios.post(
+        `/api/rides/${rideId}/bookings/${bookingId}/${actionType}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
+      setPendingBookingsAsDriver((prev) =>
+        prev.filter((booking) => booking._id !== bookingId)
+      );
+
+      alert(`Booking ${actionType}d successfully!`);
       handleCloseModal();
     } catch (error) {
-      console.error(`Error performing ${actionType} on booking:`, error.response || error);
+      console.error(`Error performing ${actionType} on booking:`, error);
       alert(`Failed to ${actionType} the booking.`);
     }
   };
@@ -566,21 +457,22 @@ export function YourRides() {
                 >
                   {/* Passenger Avatar */}
                   <Avatar
-                    alt={booking.user.name}
-                    src={booking.user.profilePicture}
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      mr: 2,
-                      border: '2px solid #3f51b5',
-                    }}
-                  />
+  alt={booking.user?.name || 'User'}
+  src={booking.user?.profilePicture || ''}
+  sx={{
+    width: 60,
+    height: 60,
+    mr: 2,
+    border: '2px solid #3f51b5',
+  }}
+/>
 
                   {/* Booking Details */}
                   <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6">{booking.user.name}</Typography>
+                    <Typography variant="h6">{booking.user?.name || 'Unknown User'}</Typography>
+
                     <Typography variant="body2" color="text.secondary">
-                      Email: {booking.user.email}
+                      Email: {booking.user?.email || 'N/A'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Seats Requested: {booking.seats}
@@ -779,10 +671,10 @@ export function YourRides() {
             {currentBooking && (
               <>
                 <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>Passenger:</strong> {currentBooking.user.name}
+                  <strong>Passenger:</strong> {currentBooking.user?.name || 'Unknown'}
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 1 }}>
-                  <strong>Email:</strong> {currentBooking.user.email}
+                  <strong>Email:</strong> {currentBooking.user?.email || 'N/A'}
                 </Typography>
                 <Typography variant="body1" sx={{ mb: 1 }}>
                   <strong>Seats Requested:</strong> {currentBooking.seats}

@@ -1,6 +1,5 @@
-// frontend/src/components/SignUpView.js
-
-import { useState, useCallback } from 'react';
+// frontend/src/components/SignUpView.tsx
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Link,
@@ -21,7 +20,7 @@ import { signup, verifyOtp } from 'src/utils/api';
 
 // Styles for the OTP Modal
 const modalStyle = {
-  position: 'absolute',
+  position: 'absolute' as const,
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
@@ -51,33 +50,38 @@ export function SignUpView() {
   const [userId, setUserId] = useState('');
   const [error, setError] = useState('');
 
-  const handleChange = (e) => {
+  // Handle input changes with proper typing
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSignUp = useCallback(async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  // Handle form submission with event typing
+  const handleSignUp = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setLoading(true);
+      setError('');
 
-    const { name, email, password, confirmPassword } = formData;
+      const { name, email, password, confirmPassword } = formData;
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const data = await signup(name, email, password);
-      setUserId(data.userId);
-      setOtpModalOpen(true);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [formData]);
+      try {
+        const data = await signup(name, email, password);
+        setUserId(data.userId);
+        setOtpModalOpen(true);
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Signup failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [formData]
+  );
 
   const handleVerifyOtp = async () => {
     setLoading(true);
@@ -87,7 +91,7 @@ export function SignUpView() {
       await verifyOtp(formData.email, otp);
       setOtpModalOpen(false);
       router.push('/'); // Redirect after successful OTP verification
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'OTP verification failed');
     } finally {
       setLoading(false);
@@ -263,7 +267,7 @@ export function SignUpView() {
               label="OTP"
               placeholder="Enter the 6-digit OTP"
               value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
               sx={{ mb: 3 }}
               required
             />

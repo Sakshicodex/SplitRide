@@ -1,26 +1,31 @@
-import type { BoxProps } from '@mui/material/Box';
+// frontend/src/sections/overview/analytics-news.tsx
 import type { CardProps } from '@mui/material/Card';
-
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
 import CardHeader from '@mui/material/CardHeader';
+import Avatar from '@mui/material/Avatar';
 import ListItemText from '@mui/material/ListItemText';
 
 import { fToNow } from 'src/utils/format-time';
-
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 
-import type { PostItemProps } from '../blog/post-item';
-
 // ----------------------------------------------------------------------
+
+// Define the shape of each news item inline
+interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  coverUrl: string;
+  postedAt: string;
+}
 
 type Props = CardProps & {
   title?: string;
   subheader?: string;
-  list: PostItemProps[];
+  list: NewsItem[];
 };
 
 export function AnalyticsNews({ title, subheader, list, ...other }: Props) {
@@ -28,10 +33,37 @@ export function AnalyticsNews({ title, subheader, list, ...other }: Props) {
     <Card {...other}>
       <CardHeader title={title} subheader={subheader} sx={{ mb: 1 }} />
 
-      <Scrollbar sx={{ minHeight: 405 }}>
-        <Box sx={{ minWidth: 640 }}>
-          {list.map((post) => (
-            <PostItem key={post.id} item={post} />
+      <Scrollbar sx={{ height: 405 }}>
+        <Box sx={{ display: 'grid', rowGap: 2, px: 2 }}>
+          {list.map((item) => (
+            <Box
+              key={item.id}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                py: 2,
+                borderBottom: (theme) => `dashed 1px ${theme.vars.palette.divider}`,
+              }}
+            >
+              <Avatar
+                variant="rounded"
+                alt={item.title}
+                src={item.coverUrl}
+                sx={{ width: 48, height: 48, flexShrink: 0 }}
+              />
+
+              <ListItemText
+                primary={item.title}
+                secondary={item.description}
+                primaryTypographyProps={{ noWrap: true, typography: 'subtitle2' }}
+                secondaryTypographyProps={{ mt: 0.5, noWrap: true, component: 'span' }}
+              />
+
+              <Box sx={{ flexShrink: 0, color: 'text.disabled', typography: 'caption' }}>
+                {fToNow(item.postedAt)}
+              </Box>
+            </Box>
           ))}
         </Box>
       </Scrollbar>
@@ -39,49 +71,11 @@ export function AnalyticsNews({ title, subheader, list, ...other }: Props) {
       <Box sx={{ p: 2, textAlign: 'right' }}>
         <Button
           size="small"
-          color="inherit"
-          endIcon={<Iconify icon="eva:arrow-ios-forward-fill" width={18} sx={{ ml: -0.5 }} />}
+          endIcon={<Iconify icon="eva:arrow-ios-forward-fill" width={18} />}
         >
           View all
         </Button>
       </Box>
     </Card>
-  );
-}
-
-// ----------------------------------------------------------------------
-
-function PostItem({ sx, item, ...other }: BoxProps & { item: Props['list'][number] }) {
-  return (
-    <Box
-      sx={{
-        py: 2,
-        px: 3,
-        gap: 2,
-        display: 'flex',
-        alignItems: 'center',
-        borderBottom: (theme) => `dashed 1px ${theme.vars.palette.divider}`,
-        ...sx,
-      }}
-      {...other}
-    >
-      <Avatar
-        variant="rounded"
-        alt={item.title}
-        src={item.coverUrl}
-        sx={{ width: 48, height: 48, flexShrink: 0 }}
-      />
-
-      <ListItemText
-        primary={item.title}
-        secondary={item.description}
-        primaryTypographyProps={{ noWrap: true, typography: 'subtitle2' }}
-        secondaryTypographyProps={{ mt: 0.5, noWrap: true, component: 'span' }}
-      />
-
-      <Box sx={{ flexShrink: 0, color: 'text.disabled', typography: 'caption' }}>
-        {fToNow(item.postedAt)}
-      </Box>
-    </Box>
   );
 }

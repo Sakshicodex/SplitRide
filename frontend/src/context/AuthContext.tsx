@@ -16,15 +16,16 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void; 
 }
 
 // Define the User type based on your backend's user model
 interface User {
-  _id: string;
   name: string;
   email: string;
+  _id: string;
+  profilePicture?: string; // ← just make it optional
 }
-
 // Define the shape of the decoded token
 interface DecodedToken {
   id: string;
@@ -45,6 +46,7 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   verifyOtp: async () => {},
   logout: () => {},
+  updateUser: () => {}, 
 });
 
 // Custom hook to use the AuthContext
@@ -205,9 +207,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/sign-in'); // Redirect to sign-in page after logout
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : prev);
+  };
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, error, clearError, login, register, verifyOtp, logout }}
+      value={{ user, token, loading, error, clearError, login, register, verifyOtp, logout ,updateUser}}
     >
       {children}
     </AuthContext.Provider>

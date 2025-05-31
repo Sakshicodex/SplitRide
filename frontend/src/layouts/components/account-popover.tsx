@@ -1,13 +1,12 @@
-// src/layouts/components/AccountPopover.tsx
+// frontend/src/layouts/components/AccountPopover.tsx
+import React, { useState, useCallback, type MouseEvent } from 'react';
 import type { IconButtonProps } from '@mui/material/IconButton';
-import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
-  Button,
+  Divider,
   Avatar,
   Popover,
-  Divider,
   MenuList,
   MenuItem,
   Typography,
@@ -17,7 +16,19 @@ import {
 import { Iconify } from 'src/components/iconify';
 import { useAuth } from 'src/context/AuthContext';
 
-export function AccountPopover(props: IconButtonProps) {
+// Define menu item structure
+type AccountMenuItem = {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+};
+
+// Extend IconButtonProps to accept optional menu data
+interface AccountPopoverProps extends IconButtonProps {
+  data?: AccountMenuItem[];
+}
+
+export function AccountPopover({ data, ...props }: AccountPopoverProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,24 +36,31 @@ export function AccountPopover(props: IconButtonProps) {
   if (!user) return null;
 
   const open = Boolean(anchorEl);
-  const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), []);
+  const handleOpen = useCallback((e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget), []);
   const handleClose = useCallback(() => setAnchorEl(null), []);
-  const handleNav = (path: string) => {
+  const handleNav = (href: string) => {
     handleClose();
-    if (path === '/logout') {
+    if (href === '/logout') {
       logout();
       navigate('/sign-in', { replace: true });
     } else {
-      navigate(path);
+      navigate(href);
     }
   };
+
+  const defaultItems: AccountMenuItem[] = [
+    { label: 'Home', href: '/', icon: <Iconify icon="eva:home-fill" /> },
+    { label: 'Profile', href: '/profile', icon: <Iconify icon="eva:person-fill" /> },
+    { label: 'Logout', href: '/logout', icon: <Iconify icon="eva:log-out-outline" /> }
+  ];
+
+  const menuItems = data ?? defaultItems;
+  const userInitial = user.name.charAt(0).toUpperCase();
 
   return (
     <>
       <IconButton onClick={handleOpen} sx={{ p: 0, width: 40, height: 40 }} {...props}>
-        <Avatar src={user.photoURL} alt={user.name} sx={{ width: 1, height: 1 }}>
-          {user.name[0].toUpperCase()}
-        </Avatar>
+        <Avatar sx={{ width: 1, height: 1 }}>{userInitial}</Avatar>
       </IconButton>
 
       <Popover
@@ -65,28 +83,17 @@ export function AccountPopover(props: IconButtonProps) {
         <Divider sx={{ borderStyle: 'dashed' }} />
 
         <MenuList disablePadding sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <MenuItem selected={location.pathname === '/'} onClick={() => handleNav('/')}>
-            <ListItemIcon><Iconify icon="eva:home-fill" className="w-5 h-5" /></ListItemIcon>
-            Home
-          </MenuItem>
-          <MenuItem selected={location.pathname === '/profile'} onClick={() => handleNav('/profile')}>
-            <ListItemIcon><Iconify icon="eva:person-fill" className="w-5 h-5" /></ListItemIcon>
-            Profile
-          </MenuItem>
+          {menuItems.map((item) => (
+            <MenuItem
+              key={item.href}
+              selected={location.pathname === item.href}
+              onClick={() => handleNav(item.href)}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+              {item.label}
+            </MenuItem>
+          ))}
         </MenuList>
-
-        <Divider sx={{ borderStyle: 'dashed' }} />
-
-        <Box sx={{ p: 1 }}>
-          <Button
-            fullWidth
-            color="error"
-            startIcon={<Iconify icon="eva:log-out-outline" className="w-5 h-5" />}
-            onClick={() => handleNav('/logout')}
-          >
-            Logout
-          </Button>
-        </Box>
       </Popover>
     </>
   );

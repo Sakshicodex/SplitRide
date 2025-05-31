@@ -17,7 +17,7 @@ import { useAuth } from 'src/context/AuthContext';
 // Lazy-loaded pages
 export const HomePage = lazy(() => import('src/pages/home'));
 
-export const UserPage = lazy(() => import('src/pages/user'));
+
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const RidesPage = lazy(() => import('src/pages/rides'));
@@ -26,7 +26,7 @@ export const PostRidePage = lazy(() => import('src/pages/postRides'));
 export const ProfilePage = lazy(() => import('src/pages/profile'));
 export const YourRides = lazy(() => import('src/pages/yourRides'));
 export const ChatPage = lazy(() => import('src/pages/chat'));
-export const QuickMatchPage = lazy(() => import('src/pages/quickMatch'));
+
 
 
 
@@ -86,13 +86,13 @@ export function Router() {
       ),
       children: [
         { element: <HomePage />, index: true },
-        { path: 'user', element: <UserPage /> },
+       
        
         
         { path: 'rides', element: <RidesPage /> },
         { path: 'rides/:id', element: <TripDetailsPage /> },
         { path: 'post-ride', element: <PostRidePage /> },
-        { path: 'quick-match', element: <QuickMatchPage /> },
+       
         { path: 'profile', element: <ProfilePage /> },
         { path: 'your-rides', element: <YourRides /> },
         
