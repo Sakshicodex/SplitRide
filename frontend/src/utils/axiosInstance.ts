@@ -6,7 +6,8 @@ const API_BASE = import.meta.env.VITE_API_URL
 
 const axiosInstance = axios.create({
   baseURL: API_BASE,
-  timeout: 10000, // Optional: Set a timeout for requests
+  timeout: 10000,
+  withCredentials: true, // Optional: Set a timeout for requests
 });
 // Add a request interceptor to include the token in headers
 axiosInstance.interceptors.request.use(
