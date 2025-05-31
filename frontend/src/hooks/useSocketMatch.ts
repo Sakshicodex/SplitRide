@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = 'http://localhost:3000'; // Replace with your backend URL
+const SOCKET_SERVER_URL = import.meta.env.VITE_API_URL;
 
 export function useSocketMatch(onMatchFound: (data: any) => void) {
   const socketRef = useRef<Socket | null>(null);
