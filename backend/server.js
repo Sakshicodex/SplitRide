@@ -25,11 +25,24 @@ const chatRoutes = require('./routes/chatRoutes');
 const app = express();
 
 // Middleware: Enable CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://split-ride-5d42.vercel.app',
+];
+
 app.use(
   cors({
-    origin: 'http://localhost:5173', // Adjust for your frontend's URL
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Optional: If you’re using cookies or HTTP auth
   })
 );
 
